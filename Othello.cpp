@@ -1,197 +1,346 @@
-﻿#include <iostream>
+﻿#define _CRT_SECURE_NO_WARNINGS
+
+#include<stdio.h>
+#include<time.h>
+#include<stdlib.h>
 
 
 
-//盤面 空白(0) 黒(-1) 白(1) 番兵(2)
-int board[10][10] = {};
-//手番
+//////////////////////////////////////////////////
+//グローバル変数の定義
+//////////////////////////////////////////////////
+
+//boardは盤面の状況,先手(-1),後手(1),空(0),番兵(2)
+int board[10][10];
+
+//playerは先手(-1)後手(1)
 int player = -1;
 
-//盤面の生成
+
+
+//////////////////////////////////////////////////
+//盤面生成
+//////////////////////////////////////////////////
+
 void make_board() {
-	//番兵
-	for (int i = 0; i < 10; i++) {
-		board[0][i] = 2;
-		board[9][i] = 2;
-		board[i][0] = 2;
-		board[i][9] = 2;
+
+	//変数boardに8*8行列,要素全て0を入力
+	for (int i = 1; i < 9; i++) {
+		for (int j = 1; j < 9; j++) {
+			board[i][j] = 0;
+		}
 	}
-	//基本位置
+
+	//盤外に2を入力
+	for (int k = 0; k < 10; k++) {
+		board[0][k] = 2;
+		board[k][0] = 2;
+		board[9][k] = 2;
+		board[k][9] = 2;
+	}
+
+	//変数boardに石の初期値を入力
 	board[4][4] = 1;
 	board[5][5] = 1;
 	board[4][5] = -1;
 	board[5][4] = -1;
 }
 
-//盤面の表示
+
+
+//////////////////////////////////////////////////
+//特定の座標,方向に相手の石を挟めるか判定
+//////////////////////////////////////////////////
+
+int pos_dir(int row, int column, int dir_r, int dir_c, int color) {
+
+	//指定方向に相手の石がない場合は0を返す
+	if (!(board[row + dir_r][column + dir_c] == (color * -1))) {
+		return 0;
+	}
+
+	//指定方向に相手の石がある場合は次のマスを探索する
+	int times = 1;
+	while (board[row + (dir_r * times)][column + (dir_c * times)] == (color * -1)) {
+		times++;
+	}
+
+	//指定方向の最後に自分の石がなければ0を返す
+	if (!(board[row + (dir_r * times)][column + (dir_c * times)] == color)) {
+		return 0;
+	}
+
+	//指定方向に相手の石が何個あるかを返す
+	return times - 1;
+}
+
+
+
+//////////////////////////////////////////////////
+//特定の場所に手番の石を配置可能か判定
+//////////////////////////////////////////////////
+
+int pos_place(int row, int column, int color) {
+
+	//場所が空であるかどうか
+	if (board[row][column] == 0) {
+
+		//全方向を探索
+		for (int i = -1; i < 2; i++) {
+			for (int j = -1; j < 2; j++) {
+				if (pos_dir(row, column, i, j, color)) {
+
+					//配置可能であれば1を返す
+					return 1;
+				}
+			}
+		}
+	}
+	return 0;
+}
+
+
+
+//////////////////////////////////////////////////
+//終了判定
+//////////////////////////////////////////////////
+
+int flag() {
+
+	//全ての場所における場所があるかどうか
+	for (int i = 1; i < 9; i++) {
+		for (int j = 1; j < 9; j++) {
+			if (pos_place(i, j, player)) {
+				return 0;
+			}
+		}
+	}
+
+	//プレイヤーを変えて全ての場所における場所があるかどうか
+	for (int i = 1; i < 9; i++) {
+		for (int j = 1; j < 9; j++) {
+			if (pos_place(i, j, (player * -1))) {
+				player *= -1;
+				printf("置ける場所がないためplayerを変更しました。\n");
+				return 0;
+			}
+		}
+	}
+
+	return 1;
+}
+
+
+
+//////////////////////////////////////////////////
+//盤面表示
+//////////////////////////////////////////////////
+
 void show_board() {
-	//番兵も含めて表示
+
+	//ループで各行を1列ずつ表示
 	for (int i = 0; i < 10; i++) {
 		for (int j = 0; j < 10; j++) {
 			switch (board[i][j]) {
 			case -1:
-				std::cout << "●";
+				printf("●");
 				break;
 			case 1:
-				std::cout << "○";
+				printf("○");
 				break;
 			case 0:
-				std::cout << "-";
+				printf("-");
 				break;
 			case 2:
-				//std::cout << "~";
+				//printf("~");
 				break;
 			default:
 				break;
 			}
 		}
-		std::cout << std::endl;
+		printf("\n");
 	}
 }
 
-//手番の表示
-void show_player() {
-	switch (player) {
-	case -1:
-		std::cout << "先手(黒)の手番です" << std::endl;
-		break;
-	case 1:
-		std::cout << "後手(白)の手番です" << std::endl;
-		break;
-	default:
-		//std::cout << "error" << std::endl;
-		break;
-	}
+
+
+//////////////////////////////////////////////////
+//手入力
+//////////////////////////////////////////////////
+
+void get_data(int* row, int* column) {
+
+	printf("入力してください\n");
+	scanf("%d%d", row, column);
 }
 
-//特定の座標から特定の方向に挟めるか判定
-int check_dir(int i, int j, int dir_i, int dir_j) {
-	//指定方向に相手の石がある場合は次のマスを探索する
-	int times = 1;
-	while (board[i + dir_i * times][j + dir_j * times] == player * -1) {
-		times++;
-	}
-	//指定方向の最後に自分の石がある場合
-	if (board[i + dir_i * times][j + dir_j * times] == player) {
-		//指定方向に相手の石が何個あるかを返す
-		return times - 1;
-	}
-	//指定方向の最後に自分の石がなければ0を返す
-	return 0;
+
+
+//////////////////////////////////////////////////
+//簡易AI(乱数)
+//////////////////////////////////////////////////
+
+void ai_random(int* row, int* column) {
+
+	//乱数から1から8までの組み合わせを作り出す
+	*row = rand() % 8 + 1;
+	*column = rand() % 8 + 1;
 }
 
-//特定の場所に置くことができるか判定
-bool check_plc(int i, int j) {
-	//場所が空であるかどうか
-	if (board[i][j] == 0) {
-		//全方向を探索
-		for (int dir_i = -1; dir_i < 2; dir_i++) {
-			for (int dir_j = -1; dir_j < 2; dir_j++) {
-				if (check_dir(i, j, dir_i, dir_j)) {
-					//配置可能であればtrueを返す
-					return true;
+
+
+//////////////////////////////////////////////////
+//石を配置
+//////////////////////////////////////////////////
+
+void put_board(int row, int column) {
+
+	//石を変える方向を探索
+	for (int i = -1; i < 2; i++) {
+		for (int j = -1; j < 2; j++) {
+
+			//石を変える必要がある時,変える個数がnumに入る
+			int num = pos_dir(row, column, i, j, player);
+			if (num) {
+
+				//変えられる時,numに入った個数だけ順番に手番の石にする
+				for (int k = 1; k < num + 1; k++) {
+					board[row + (k * i)][column + (k * j)] = player;
 				}
 			}
 		}
 	}
-	return false;
+
+	//石を追加する
+	board[row][column] = player;
 }
 
-//終了判定
-bool flag_fin() {
-	//置ける場所があるか判定
-	for (int i = 1; i < 9; i++) {
-		for (int j = 1; j < 9; j++) {
-			if (check_plc(i, j)) {
-				return true;
-			}
-		}
+
+
+//////////////////////////////////////////////////
+//一手分実行
+//////////////////////////////////////////////////
+
+int do_round() {
+
+	int row = 0;
+	int column = 0;
+
+	//アドレスで座標を取って来る
+	switch (player) {
+	case -1:
+		printf("先手の手番です。\n");
+		get_data(&row, &column);
+		break;
+	case 1:
+		printf("後手の手番です。\n");
+		get_data(&row, &column);
+		break;
+	default:
+		break;
 	}
 
-	//プレイヤーを変えて置ける場所があるか判定
-	player *= -1;
-	for (int i = 1; i < 9; i++) {
-		for (int j = 1; j < 9; j++) {
-			if (check_plc(i, j)) {
-				std::cout << "置く場所がないためPlayerを変更しました" << std::endl;
-				return true;
-			}
-		}
+	//配置可能であれば配置
+	if (pos_place(row, column, player)) {
+		printf("%d%dに配置します。\n", row, column);
+		put_board(row, column);
+		return 0;
 	}
 
-	return false;
+	//配置不可能であればもう一度入力させる
+	printf("%d%dには配置できません。\n", row, column);
+	
+	// 再帰で再入力を促すのはメモリリークするのでよくないぜ
+	return do_round();
 }
 
-//石を配置する
-void place_stn(int i, int j) {
-	//方向毎に走査
-	for (int dir_i = -1; dir_i < 2; dir_i++) {
-		for (int dir_j = -1; dir_j < 2; dir_j++) {
-			//挟んだ石の数
-			int change_num = check_dir(i, j, dir_i, dir_j);
-			//挟んだ石の数だけ置き換える
-			for (int k = 1; k < change_num + 1; k++) {
-				board[i + dir_i * k][j + dir_j * k] = player;
-			}
+
+
+//////////////////////////////////////////////////
+//ゲームの繰り返し実行
+//////////////////////////////////////////////////
+void loop_game() {
+
+	while (1) {
+
+		//終了判定
+		if (flag()) {
+			break;
 		}
+
+		//盤面の表示
+		show_board();
+
+		//配置
+		do_round();
+
+		//手番交代
+		player *= -1;
 	}
-	//配置箇所を置き換える
-	board[i][j] = player;
 }
 
-//勝敗判定
-void judge_board() {
-	int count_b = 0; //黒石の数
-	int count_w = 0; //白石の数
+
+
+//////////////////////////////////////////////////
+//結果表示
+//////////////////////////////////////////////////
+
+void score() {
+
+	//countは石の数を数える
+	int count_b = 0;
+	int count_w = 0;
+
+	//全探索
 	for (int i = 1; i < 9; i++) {
 		for (int j = 1; j < 9; j++) {
 			if (board[i][j] == -1) {
 				count_b++;
 			}
-			else if (board[i][j] == 1) {
+			if (board[i][j] == 1) {
 				count_w++;
 			}
 		}
 	}
-	//結果表示
-	std::cout << "先手" << count_b << ":後手" << count_w << std::endl;
-	//勝敗判定
+
+	//盤面の表示
+	show_board();
+
+	//結果の表示
+	printf("先手%d石,後手%d石\n", count_b, count_w);
 	if (count_b > count_w) {
-		std::cout << "先手の勝利" << std::endl;
+		printf("先手の勝利\n");
 	}
-	else if (count_w > count_b) {
-		std::cout << "後手の勝利" << std::endl;
+	else if (count_b < count_w) {
+		printf("後手の勝利\n");
 	}
 	else {
-		std::cout << "引き分け" << std::endl;
+		printf("引き分け\n");
 	}
 }
 
-int main() {
-	//盤面の生成
-	make_board();
-	//終了までループ
-	while (flag_fin()) {
-		system("cls");
 
-		//盤面の表示
-		show_board();
-		//手番の表示
-		show_player();
-		//入力受付
-		int i, j;
-		do {
-			std::cout << "配置場所を入力してください" << std::endl;
-			std::cin >> i >> j;
-		} while (!check_plc(i, j));
-		//石を配置する
-		place_stn(i, j);
-		//手番を入れ替える
-		player *= -1;
-	}
-	//盤面の表示
-	show_board();
-	//勝利判定
-	judge_board();
+
+//////////////////////////////////////////////////
+//メイン関数
+//////////////////////////////////////////////////
+
+int main(void) {
+
+	//乱数用
+	srand((int)time(NULL));
+
+	printf("GameStart\n");
+
+	//盤面を作る
+	make_board();
+
+	//繰り返し部分
+	loop_game();
+
+	printf("GameEnd\n");
+
+	score();
+
 	return 0;
 }
